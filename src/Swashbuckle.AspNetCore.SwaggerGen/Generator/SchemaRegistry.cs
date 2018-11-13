@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
+using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
+using Microsoft.AspNetCore.Http;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using Newtonsoft.Json.Converters;
-using Microsoft.OpenApi.Models;
-using Microsoft.OpenApi.Any;
 
 namespace Swashbuckle.AspNetCore.SwaggerGen
 {
@@ -26,31 +27,31 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
             _jsonContractResolver = _jsonSerializerSettings.ContractResolver ?? new DefaultContractResolver();
             _options = options ?? new SchemaRegistryOptions();
             _schemaIdManager = new SchemaIdManager(_options.SchemaIdSelector);
-            Definitions = new Dictionary<string, OpenApiSchema>();
+            Schemas = new Dictionary<string, OpenApiSchema>();
         }
 
-        public IDictionary<string, OpenApiSchema> Definitions { get; private set; }
+        public IDictionary<string, OpenApiSchema> Schemas { get; private set; }
 
         public OpenApiSchema GetOrRegister(Type type)
         {
             var referencedTypes = new Queue<Type>();
-            var OpenApiSchema = CreateSchema(type, referencedTypes);
+            var openApiSchema = CreateSchema(type, referencedTypes);
 
             // Ensure all referenced types have a corresponding definition
             while (referencedTypes.Any())
             {
                 var referencedType = referencedTypes.Dequeue();
                 var OpenApiSchemaId = _schemaIdManager.IdFor(referencedType);
-                if (Definitions.ContainsKey(OpenApiSchemaId)) continue;
+                if (Schemas.ContainsKey(OpenApiSchemaId)) continue;
 
                 // NOTE: Add the OpenApiSchemaId first with a null value. This indicates a work-in-progress
                 // and prevents a stack overflow by ensuring the above condition is met if the same
                 // type ends up back on the referencedTypes queue via recursion within 'CreateInlineOpenApiSchema'
-                Definitions.Add(OpenApiSchemaId, null);
-                Definitions[OpenApiSchemaId] = CreateInlineSchema(referencedType, referencedTypes);
+                Schemas.Add(OpenApiSchemaId, null);
+                Schemas[OpenApiSchemaId] = CreateInlineSchema(referencedType, referencedTypes);
             }
 
-            return OpenApiSchema;
+            return openApiSchema;
         }
 
         private OpenApiSchema CreateSchema(Type type, Queue<Type> referencedTypes)
@@ -58,6 +59,12 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
             // If Option<T> (F#), use the type argument
             if (type.IsFSharpOption())
                 type = type.GetGenericArguments()[0];
+
+            // Special handling for form binding types
+            if (typeof(IFormFile).IsAssignableFrom(type))
+            {
+                return new OpenApiSchema { Type = "string", Format = "binary" };
+            }
 
             var jsonContract = _jsonContractResolver.ResolveContract(type);
 

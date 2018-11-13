@@ -2,6 +2,7 @@
 using System.Reflection;
 using Newtonsoft.Json.Serialization;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
 
 namespace Swashbuckle.AspNetCore.SwaggerGen
 {
@@ -59,9 +60,8 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
             }
 
             var exampleNode = memberNode.SelectSingleNode(ExampleXPath);
-            // TODO:
-            //if (exampleNode != null)
-            //    propertySchema.Example = XmlCommentsTextHelper.Humanize(exampleNode.InnerXml);
+            if (exampleNode != null)
+                propertySchema.Example = new OpenApiString(XmlCommentsTextHelper.Humanize(exampleNode.InnerXml));
         }
     }
 }

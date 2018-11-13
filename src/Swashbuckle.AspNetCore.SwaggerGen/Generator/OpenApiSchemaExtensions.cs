@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Collections.Generic;
+using System.ComponentModel;
 using Microsoft.OpenApi.Models;
 
 namespace Swashbuckle.AspNetCore.SwaggerGen
@@ -10,8 +11,8 @@ namespace Swashbuckle.AspNetCore.SwaggerGen
         {
             foreach (var attribute in attributes)
             {
-                //if (attribute is DefaultValueAttribute defaultValue)
-                //    schema.Default = defaultValue.Value;
+                if (attribute is DefaultValueAttribute defaultValue)
+                    schema.Default = OpenApiPrimitiveFactory.CreateFrom(defaultValue.Value);
 
                 if (attribute is RegularExpressionAttribute regex)
                     schema.Pattern = regex.Pattern;
